@@ -1,6 +1,6 @@
 import math
 import json
-from math_utils import FIBER_SPEED
+from .math_utils import FIBER_SPEED
 import matplotlib.pyplot as plt
 from typing import Dict
 
