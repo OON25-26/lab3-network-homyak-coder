@@ -157,11 +157,8 @@ class Network:
             plt.plot([x1, x2], [y1, y2])
             drawn.add(key)
 
-        plt.xlabel("x (m)")
-        plt.ylabel("y (m)")
         plt.title("Optical Network")
-        plt.axis("equal")
-        plt.tight_layout()
+        plt.savefig("results/topology.png", dpi=300)
         plt.show()
 
 
