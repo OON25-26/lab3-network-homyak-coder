@@ -70,7 +70,6 @@ class Network:
         # load topology
         with open(nodes_json_path, "r") as f:
             data = json.load(f)
-
         # create Node instances
         self.nodes: Dict[str, Node] = {}
         for label, info in data.items():
@@ -79,18 +78,17 @@ class Network:
                 "position": tuple(info["position"]),  # (x, y) in meters
                 "connected_nodes": list(info["connected_nodes"])
             })
-
-        # create directed Line instances (UV and VU) with Euclidean distance in km
+        # create directed Line instances with euclid distance in km
         self.lines: Dict[str, Line] = {}
-        for u, info in data.items():
+        for a, info in data.items():
             x1, y1 = info["position"]
-            for v in info["connected_nodes"]:
-                x2, y2 = data[v]["position"]
+            for b in info["connected_nodes"]:
+                x2, y2 = data[b]["position"]
                 dist_m = math.hypot(x2 - x1, y2 - y1)
                 length_km = dist_m / 1000.0
-                label_uv = f"{u}{v}"
-                if label_uv not in self.lines:
-                    self.lines[label_uv] = Line(label_uv, length_km)
+                label = f"{a}{b}"
+                if label not in self.lines:
+                    self.lines[label] = Line(label, length_km)
 
         self.connect()
 
@@ -99,28 +97,27 @@ class Network:
             n.successive = {}
         for l in self.lines.values():
             l.successive = {}
-
         for line_label, line in self.lines.items():
             if len(line_label) < 2:
                 continue
-            u, v = line_label[0], line_label[1]
-            if u in self.nodes and v in self.nodes:
-                self.nodes[u].successive[v] = line
-                line.successive[v] = self.nodes[v]
+            a, b = line_label[0], line_label[1]
+            if a in self.nodes and b in self.nodes:
+                self.nodes[a].successive[b] = line
+                line.successive[b] = self.nodes[b]
 
     def find_paths(self, src: str, dst: str):
         if src not in self.nodes or dst not in self.nodes:
             return []
 
         paths = [[src]]
-        valid_paths = []
+        final_paths = []
 
         while paths:
             current_path = paths.pop(0)
             last_node = current_path[-1]
 
             if last_node == dst:
-                valid_paths.append(current_path)
+                final_paths.append(current_path)
                 continue
 
             for nbr in self.nodes[last_node].connected_nodes:
@@ -128,38 +125,29 @@ class Network:
                     new_path = current_path + [nbr]
                     paths.append(new_path)
 
-        return valid_paths
+        return final_paths
 
-    def propagate(self, signal: SignalInformation) -> SignalInformation:
-        if not signal.path:
-            return signal
-
+    def propagate(self, signal: SignalInformation):
         start_label = signal.path[0]
         self.nodes[start_label].propagate(signal)
-        return signal
 
     def draw(self):
+        # drawing the points
         for label, node in self.nodes.items():
             x, y = node.position
-            plt.scatter([x], [y])
-            plt.text(x, y, label, fontsize=10, ha="right", va="bottom")
+            plt.plot(x, y, "o")
+            plt.text(x, y, label)
 
-        drawn = set()
-        for line_label in self.lines:
-            if len(line_label) < 2:
-                continue
-            u, v = line_label[0], line_label[1]
-            key = tuple(sorted((u, v)))
-            if key in drawn:
-                continue
-            x1, y1 = self.nodes[u].position
-            x2, y2 = self.nodes[v].position
-            plt.plot([x1, x2], [y1, y2])
-            drawn.add(key)
+        #drawing the lines
+        for a, node in self.nodes.items():
+            for b in node.connected_nodes:
+                if a < b:  # don't want to draw AB and BA (checking the alphabet)
+                    x1, y1 = node.position
+                    x2, y2 = self.nodes[b].position
+                    plt.plot([x1, x2], [y1, y2])
 
-        plt.title("Optical Network")
+        plt.title("Optical Network from Lab 3")
         plt.savefig("results/topology.png", dpi=300)
-        plt.show()
 
 
 
